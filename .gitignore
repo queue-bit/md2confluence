@@ -1,6 +1,7 @@
 *.gem
 *.rbc
 /.config
+/.cloudconfig
 /coverage/
 /InstalledFiles
 /pkg/
