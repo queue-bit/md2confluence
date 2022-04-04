@@ -3,17 +3,18 @@ require 'json'
 
 module Confluence
     class Convert
-        attr_accessor :space, :parent, :title, :version, :toc, :confluence_markup, :file_hash, :attachments
+        attr_accessor :space, :parent, :title, :version, :toc, :confluence_markup, :file_hash, :attachments, :tags, :macros
 
-        def initialize(process_file, space=nil,parent=nil,title=nil,version=nil,toc=nil)
+        def initialize(process_file, space=nil,parent=nil,title=nil,version=nil,toc=nil,tags=nil,macros=nil)
             space != nil ? @space = space : @space = ""
             parent != nil ? @parent = parent : @parent = ""
             title != nil ? @title = title : @title = ""
             version != nil ? @version = version : @version = ""
             toc != nil ? @toc = toc : @toc = "true"
+            tags != nil ? @tags = tags : @tags = ""
             @confluence_markup = ""
             @file_hash = nil
-
+            @macros = File.readlines('./lib/md2confluence/supported-macros.config',chomp:true)
             process_file(process_file)
         end        
 
@@ -66,6 +67,8 @@ module Confluence
                             @version = line.split(":")[1].tr('"','').strip
                         elsif line =~ /^toc:\s+?(.*?)$/
                             @toc = line.split(":")[1].tr('"','').strip
+                        elsif line =~ /^(?:tags?|labels?):\s+?(.*?)$/
+                            @tags = line.split(":")[1].tr('"','').strip.gsub(/[\,\.\<\>\{\}\[\]\\\/]/,"")
                         end            
                     elsif needle_status == FALSE
 
@@ -73,31 +76,50 @@ module Confluence
                             indent = line.length - line.lstrip.length + 1
         
                             # Handle headers
-                            if line =~ /^\s*?\#{1,6}\s+?(.*?)$/
+                            if line =~ /^\s*?\#{1,6}\s+?(.*?)$/ && in_code == FALSE
                                 header_level = line.count "#"
                                 headers = ["h1","h2","h3","h4","h5","h6","h7","h8"]
                                 line = line.lstrip.sub(/(\#{1,6}\s+?)/,"#{headers[header_level - 1]}. ") 
                             end
         
                             # Handle Italic
-                            if line =~ /\s\*{1}[\w\ \t]+?\*{1}\s/
+                            if line =~ /\s\*{1}[\w\ \t]+?\*{1}\s/ && in_code == FALSE
                                 line = line.lstrip.gsub(/(\*)/,"_") 
                             end
 
                             # Handle Bold
-                            if line =~ /\s\*{2}[\w\ \t]+?\*{2}\s/
+                            if line =~ /\s\*{2}[\w\ \t]+?\*{2}\s/ && in_code == FALSE
                                 line = line.lstrip.gsub(/(\*\*)/,"*") 
                             end        
         
                             # Handle Quotes (this needs work)
-                            if line =~ /^\s*?\>/
+                            if line =~ /^\s*?\>/ && in_code == FALSE
                                 line = line.lstrip.sub(/\>/,"bq.") 
                             end
-                       
+
+                            # Handle <br> or <br/> text breaks
+                            if line =~ /\<br ?\/?\>/  && in_code == FALSE
+                                line = line.gsub(/\<br ?\/?\>/,' \\\\\\ ')
+                            end
+                            
+
+
+                            # Handle curlies `{ }`. Confluence will reject these if they don't match a macro
+                            # First, check if they're one of the normal macros (might need a way to define macros?)
+                            line.scan(/(\{.*?})/).each do |inline_line|
+                                inline_line[0].scan(/\{.*?[\: \}]/).each do |test_line|
+                                    if !@macros.include?(test_line) && in_code == FALSE
+                                        # unknown macro, assume it's not actually a macro and escape the curly braces
+                                        line = line.sub(inline_line[0],inline_line[0].sub(/\{/,'\{').sub(/\}/,'\}'))
+                                    end
+                                end
+                            end
 
                             # Handle inline code
-                            line.scan(/\`(.{2,}?)\`/).each do |inline_line|
-                                line["`#{inline_line[0]}`"] = "{{#{inline_line[0]}}}"
+                            line.scan(/(\`{1,3}.{2,}?\`{1,3})/).each do |inline_line| 
+                                if in_code == FALSE
+                                    line["#{inline_line[0]}"] = "{{#{inline_line[0].gsub(/ ?\` ?/,"")}}}"
+                                end
                             end
 
 
@@ -110,11 +132,6 @@ module Confluence
                                 line = "{code}\n"
                             end    
 
-                            # Handle text breaks
-                            #if line =~ /^\n$/
-                            #    line = "//"
-                            #end
-
                             # Handle Horizontal Rules/Lines
                             if line =~ /^---$/ && in_code == FALSE
                                 line = "----"
@@ -123,22 +140,22 @@ module Confluence
                             # Handle Links & Images
                             line.scan(/\!?\[.*?\]\(.*?\)/).each do |inline_line|
                                 link_alias = inline_line.slice(/\[(.*)\]/,1)
-                                link_url = inline_line.slice(/\(([\w\:\/\/\-\_\#\.\@]*)/,1)
+                                link_url = inline_line.slice(/\]\s{0,5}\(([\w\:\/\/\-\_\#\.\@\?\&\=]*)/,1)
                                 link_tip = ""
                                 link_attribute = ""
                                 link_ext = link_url.slice(/\w+?\.([a-z0-9\-]{3,5})/,1)
                                 attachment = FALSE
 
-                                if link_url !~ /(?:http|https|rss|ftp|sftp)/ && link_ext !~ /(?:html|htm|asp|aspx|cf|php|com)/ 
+                                if link_url !~ /(?:http|https|rss|ftp|sftp|[\{\}])/ && link_ext !~ /(?:html|htm|asp|aspx|cf|php|com)/ && link_url !~ /^\#/ && in_code == FALSE
                                     @attachments.push(link_url)
                                     attachment = TRUE
-                                    link_url = link_url.slice(/(\w+?\.[a-z0-9\-]{3,5})/)
+                                    link_url = link_url.slice(/([\w\-\_\&\"\' ]+?\.[a-z0-9\-]{3,5})/)
                                 end 
 
-                                if inline_line =~ /\!\[/  # Image
+                                if inline_line =~ /\!\[/ && in_code == FALSE # Image
                                     link_attribute = line.slice(/\(.* \"(.*?)\".*?\)/,1)
                                     line = line.sub(inline_line,"!#{link_url}#{'|' + link_attribute unless link_attribute.nil?}!")                           
-                                elsif inline_line !~ /\!\[/ && !attachment  # Link to another place
+                                elsif inline_line !~ /\!\[/ && !attachment && in_code == FALSE # Link to another place
                                     link_tip = line.slice(/\(.* \"(.*?)\".*?\)/,1)
                                     line = line.sub(inline_line,"[#{link_alias+'|' unless link_alias.nil?}#{link_url}#{'|' + link_tip unless link_tip.nil?}]")
                                 else #  Link to an attachment
@@ -150,10 +167,10 @@ module Confluence
         
                             
                             # Handle table
-                            if line =~ /^\s*?\|.*?\|/ && in_table == FALSE
+                            if line =~ /^\s*?\|.*?\|/ && in_table == FALSE && in_code == FALSE
                                 in_table = TRUE
                                 table_header = TRUE
-                            elsif line !~ /^\s*?\|.*?\|/ && in_table == TRUE
+                            elsif line !~ /^\s*?\|.*?\|/ && in_table == TRUE 
                                 in_table = FALSE
                             end
         
@@ -212,10 +229,6 @@ module Confluence
                                     li_levels.clear()
                                 end 
                             end # handle lists
-                              
-                            #if line =~ /<br/
-                            #    line = "\n"
-                            #end
             
                         else 
                             indent = 0

@@ -163,9 +163,9 @@ module Confluence
             file_type = mime_types_common[File.extname(file).downcase]
                       
             if file_type
-                file_type
+                return file_type
             else
-                nil
+                return nil
             end
         end
 
@@ -177,6 +177,7 @@ module Confluence
         end
 
         def auto_attach(id,attachments)
+            puts "Attach to ID: #{id}"
             attachments.each do |file|                
                 update_attachment(id,file)
             end
@@ -193,7 +194,7 @@ module Confluence
             
             # run get_attachment_meta to get the attachment ID
             attachment_meta = get_attachment_meta(page_id,file)
-
+#puts "#{page_id} #{mime_type} #{file_uri}"
             if attachment_meta && mime_type != nil # If an attachment with this filename exists, update it
                 attachment_id = attachment_meta["id"]
                 headers = {'Content-Type'=>'multipart/form-data','Accept'=>'application/json', 'X-Atlassian-Token' => 'no-check', 'minorEdit' =>  'true'}
