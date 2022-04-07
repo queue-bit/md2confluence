@@ -1,12 +1,12 @@
 ---
-title: "Test 1"
-version: "0.0.1"
+title: "Markdown to Confluence Example"
+version: "0.0.2"
 toc: "true"
 ---
 
 # Example markdown 
 
-In this test, the files included via relative links don't exist (wrong path).
+This page is for `example.rb`, which loads this file into Confluence.
 
 ## Lists
 
@@ -70,12 +70,12 @@ This is the last line of a code block.
 
 Local images are added to an attachments list so they can be uploaded.
 
-![Data](./image.png "Distance TimeSeries")
+![Data](./assets/nodemcu-esp8266-amica.jpg "nodemcu-esp8266")
 
 
 ## Relative Links (local, requires attachment)
 
-[attachment.txt](./attachment.txt)
+[attachment.txt](./assets/test.txt)
 
 ## Text styling
 
@@ -120,3 +120,37 @@ H5 example
 
 H6 example
 
+# Common Macros
+
+Two anchor Macros on the same line: {anchor:here}  {anchor: another one}
+
+Contributor Macro:
+{contributors:limit=10|scope=descendants|labels=chocolate,cake|showPages=true|noneFoundMessage=Oh dear, no contributors found|showCount=true|contentType=pages|include=authors,comments,labels,watches|mode=list|showAnonymous=true|order=update|page=ds:Advanced Topics|showLastTime=true}
+
+Change History macro {change-history} and a {non-existent macro} on same line.
+
+And an index {index}
+
+# Common things that break
+
+Inline code tags using three backticks ``` kubectl get namespaces ``` like that.
+
+`>> /etc/profile.d/{your-variable-name}.sh`
+
+Use `source` to load the `/etc/profile.d/{your-variable-name}.sh` file into the current shell
+
+```zsh
+~ sudo sh -c 'echo "export TEST_API_KEY=mykeyishere" >>  /etc/profile.d/test-key.sh' 
+[sudo] password for user: _
+~ sudo chmod +x /etc/profile.d/test-key.sh 
+~ source /etc/profile.d/test-key.sh 
+~ echo $TEST_API_KEY
+mykeyishere
+~_
+```
+
+# Some things from Jekyll for testing
+
+[Here's a link with common things that (break), it currently doesn't work](#common-things-that-break)
+
+This is a test <br/> where there are multiple <br> line-breaks of \\ different types.

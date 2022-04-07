@@ -163,9 +163,9 @@ module Confluence
             file_type = mime_types_common[File.extname(file).downcase]
                       
             if file_type
-                file_type
+                return file_type
             else
-                nil
+                return nil
             end
         end
 
@@ -177,6 +177,7 @@ module Confluence
         end
 
         def auto_attach(id,attachments)
+            puts "Attach to ID: #{id}"
             attachments.each do |file|                
                 update_attachment(id,file)
             end
