@@ -23,8 +23,7 @@ else  # Set manually (normally you'd want to exit here instead of hard-coding cr
 end
 
 # The file to process:
-#markdown_file = "./tests/example-single-page.md" 
-markdown_file = "./tests/_kubernetes/2021-07-04-bare-metal-setup.md" 
+markdown_file = "./tests/example-single-page.md" 
 
 #---
 #-> Instantiate
@@ -79,7 +78,7 @@ result = client.create({
     body: {storage:{value: markup.confluence_markup, representation: "wiki"}}
 }) 
 
-pp markup.confluence_markup
+#pp markup.confluence_markup
 
 if !result["statusCode"] && markup.attachments != nil
     puts "Page Created: #{result["id"]}.\nAdding attachments"

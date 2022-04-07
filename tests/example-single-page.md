@@ -70,12 +70,12 @@ This is the last line of a code block.
 
 Local images are added to an attachments list so they can be uploaded.
 
-![Data](./tests/assets/nodemcu-esp8266-amica.jpg "nodemcu-esp8266")
+![Data](./assets/nodemcu-esp8266-amica.jpg "nodemcu-esp8266")
 
 
 ## Relative Links (local, requires attachment)
 
-[attachment.txt](./tests/assets/test.txt)
+[attachment.txt](./assets/test.txt)
 
 ## Text styling
 

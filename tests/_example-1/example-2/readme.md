@@ -123,12 +123,12 @@ This is the last line of a code block.
 
 Local images are added to an attachments list so they can be uploaded.
 
-![Data](./tests/image.png "Distance TimeSeries")
+![Data](../../assets/image.png "Distance TimeSeries")
 
 
 ## Relative Links (local, requires attachment)
 
-[attachment.txt](./tests/attachment.txt)
+[attachment.txt](../../assets/attachment.txt)
 
 ## Text styling
 

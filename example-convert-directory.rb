@@ -1,3 +1,7 @@
+# This will process the entire ./tests directory
+# Each sub-directory becomes a parent page for the markdown files they contain
+# No attempt is made to recover from upload errors, so a page with a title that's already in use on the confluence space will not be created.
+
 require 'pp'
 require 'fileutils'
 require 'rubygems'
@@ -13,7 +17,7 @@ if File.file?(config_file)      # Grab Confluence options from config file (thre
     $site        = "#{config.lines[0].strip}/wiki"
     $username    = "#{config.lines[1].strip}"
     $password    = "#{config.lines[2].strip}"        
-else  # Set manually (normally you'd want to exit here instead of hard-coding creds, this is for example only):
+else                            # Set manually (normally you'd want to exit here instead of hard-coding creds, this is for example only):
     $site        = "https://example.atlassian.net/wiki/"    # The full API base url (ex. https://example.atlassian.net/wiki/)
     $username    = "example@gmail.com"                      # The username (ex. example@gmail.com)
     $password    = "yourpassword"                           # The password, for Confluence Cloud you'll need to setup a token https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/
@@ -21,16 +25,16 @@ end
 
 
 # Define where our markdown is
-markdown_directory = "./tests"
-markdown_files = "*.md"
+markdown_directory = "./tests"                              # The directory to process
+markdown_files = "*.md"                                     # The files to process
 
 # Define some confluence info
-confluence_space = "EDACRA"                 # The space we're uploading to
-confluence_root_name = "Tests"                   
+confluence_space = "YOUR-SPACE-NAME"                        # The space we're uploading to
+confluence_root_name = "Tests"                              # The page that all the rest of these pages will fall under       
 
 confluence_client = Confluence::Client.new($username, $password, $site)
 
- # The confluence page that everything will fall under (created if it doesn't exist)
+# The confluence page that everything will fall under (created if it doesn't exist)
 confluence_root = confluence_client.get({spaceKey: confluence_space, title: confluence_root_name})[0]
 
 if confluence_root == nil
@@ -40,22 +44,19 @@ if confluence_root == nil
         space: {key: confluence_space}, 
         body: {storage:{value: "h1. #{confluence_root_name}", representation: "wiki"}}
     })
-    #pp confluence_root     
+
 end
 
 #-
-# This will process the entire ./tests directory
-# We take the directory structure and use it to build a parent/child page structure on confluence first
+# We first take the directory structure and use it to build a parent/child page structure on confluence,
+# this ensures we don't get into a situation where the parent 'page'  doesn't exist.
 process_files = Dir.glob("#{markdown_directory}/**/#{markdown_files}")
 structure = Set[]
-
-
-#pp process_files
 
 process_files.each do |file|
     file_path = Pathname(File.dirname(file)).each_filename.to_a
     temp = file_path[1..-1]
-    temp.map! {|t| t.gsub(/_/,"").gsub(/\-/," ").split.map(&:capitalize).join(' ')}
+    temp.map! {|t| t.gsub(/_/,"").gsub(/\-/," ").split.map(&:capitalize).join(' ')} #Replace underscores and dashes, then capitalize the words - these become page titles
     temp.insert(0,file_path.length)
     structure.add?(temp)  
 end
@@ -85,7 +86,7 @@ structure.each_with_index do |path,index|
     end
 end
 
-
+#-
 # Now that we know each parent page exists, lets grab the actual files
 puts "Building content pages"
 process_files.each do |file|
@@ -94,11 +95,11 @@ process_files.each do |file|
 
     if file_markup.confluence_markup != ""
         parent_name = file_path.last.gsub(/_/,"").gsub(/\-/," ").split.map(&:capitalize).join(' ')
-        
 
         labels = []
         page_labels = {}
-        if file_markup.title != ""
+
+        if file_markup.title != ""              # If the markup contained a title tag in the frontmatter, then use it
             page_title = file_markup.title
         else
             page_title = "#{parent_name}"
@@ -116,7 +117,7 @@ process_files.each do |file|
         labels.push({prefix: "global", name: "md2confluence"})
         labels.push({prefix: "global", name: "#{file_markup.file_hash}"})
 
-        # Store that hash
+        # Store that
         page_labels.store(:labels,labels)
 
         parent = confluence_client.get({spaceKey: confluence_space, title: parent_name})[0]

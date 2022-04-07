@@ -147,9 +147,12 @@ module Confluence
                                 attachment = FALSE
 
                                 if link_url !~ /(?:http|https|rss|ftp|sftp|[\{\}])/ && link_ext !~ /(?:html|htm|asp|aspx|cf|php|com)/ && link_url !~ /^\#/ && in_code == FALSE
-                                    @attachments.push(link_url)
-                                    attachment = TRUE
-                                    link_url = link_url.slice(/([\w\-\_\&\"\' ]+?\.[a-z0-9\-]{3,5})/)
+                                    attachment_file = File.join(File.dirname(process_file),link_url)
+                                    if File.exist?(attachment_file)
+                                        @attachments.push(attachment_file)
+                                        attachment = TRUE
+                                        link_url = link_url.slice(/([\w\-\_\&\"\' ]+?\.[a-z0-9\-]{3,5})/)
+                                    end
                                 end 
 
                                 if inline_line =~ /\!\[/ && in_code == FALSE # Image
@@ -179,11 +182,17 @@ module Confluence
                                 line=""
                             end
         
+                            # Need to catch & fix instances where the pipes for empty cells don't have a space (|| instead of | |) 
+                            if in_table && !table_header  
+                                line = line.lstrip.gsub(/\|\|/,"| |")
+                            end
+
                             if in_table && table_header
                                 line = line.lstrip.gsub(/\|/,"||")
                                 table_header = FALSE
                             end
-        
+
+
                          
         
                             # Handle lists - nested lists are a pain:
