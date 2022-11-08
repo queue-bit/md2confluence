@@ -15,6 +15,8 @@ Includes two modules to:
      - Relative links to files (for things like an image) are parsed and can be easily attached to the confluence page!
 2. Interface with Confluence
 
+You can [read more about md2confluence](https://www.andreaswiebe.com/homelab-notes/projects/md2confluence) on my site.
+
 ## Requirements
 
 - A *nix environment
